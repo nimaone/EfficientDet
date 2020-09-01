@@ -129,6 +129,29 @@ def flipx(image, annotations, prob=0.5):
             quadrangles[:, 3, 1] = tmp[:, 1, 1]
     return image, annotations
 
+def flipy(image, annotations, prob=0.5):
+    assert 'bboxes' in annotations, 'annotations should contain bboxes even if it is empty'
+
+    random_prob = np.random.uniform()
+    if random_prob < (1 - prob):
+        return image, annotations
+    bboxes = annotations['bboxes']
+    h, w = image.shape[:2]
+    image = image[::-1, :]
+    if bboxes.shape[0] != 0:
+        tmp = bboxes.copy()
+        bboxes[:, 1] = h - 1 - bboxes[:, 3]
+        bboxes[:, 3] = h - 1 - tmp[:, 1]
+        if 'quadrangles' in annotations and annotations['quadrangles'].shape[0] != 0:
+            quadrangles = annotations['quadrangles']
+            tmp = quadrangles.copy()
+            quadrangles[:, 1, 1] = h - 1 - quadrangles[:, 1, 1]
+            quadrangles[:, 0, 1] = h - 1 - tmp[:, 2, 1]
+            quadrangles[:, 0, 0] = tmp[:, 2, 0]
+            quadrangles[:, 3, 1] = h - 1 - quadrangles[:, 3, 1]
+            quadrangles[:, 2, 1] = h - 1 - tmp[:, 0, 1]
+            quadrangles[:, 2, 0] = tmp[:, 0, 0]
+    return image, annotations 
 
 def multi_scale(image, annotations, prob=1.):
     assert 'bboxes' in annotations, 'annotations should contain bboxes even if it is empty'
@@ -210,11 +233,12 @@ def translate(image, annotations, prob=0.5, border_value=(128, 128, 128)):
 
 
 class MiscEffect:
-    def __init__(self, multi_scale_prob=0.5, rotate_prob=0.05, flip_prob=0.5, crop_prob=0.5, translate_prob=0.5,
+    def __init__(self, multi_scale_prob=0.5, rotate_prob=0.05, flipx_prob=0.5, flipy_prob=0.5, crop_prob=0.5, translate_prob=0.5,
                  border_value=(128, 128, 128)):
         self.multi_scale_prob = multi_scale_prob
         self.rotate_prob = rotate_prob
-        self.flip_prob = flip_prob
+        self.flipx_prob = flipx_prob
+        self.flipy_prob = flipy_prob
         self.crop_prob = crop_prob
         self.translate_prob = translate_prob
         self.border_value = border_value
@@ -222,7 +246,8 @@ class MiscEffect:
     def __call__(self, image, annotations):
         image, annotations = multi_scale(image, annotations, prob=self.multi_scale_prob)
         image, annotations = rotate(image, annotations, prob=self.rotate_prob, border_value=self.border_value)
-        image, annotations = flipx(image, annotations, prob=self.flip_prob)
+        image, annotations = flipx(image, annotations, prob=self.flipx_prob)
+        image, annotations = flipy(image, annotations, prob=self.flipy_prob)
         image, annotations = crop(image, annotations, prob=self.crop_prob)
         image, annotations = translate(image, annotations, prob=self.translate_prob, border_value=self.border_value)
         return image, annotations
