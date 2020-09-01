@@ -112,22 +112,52 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
             ),
             verbose=1,
             save_weights_only=True,
-            # save_best_only=True,
+            save_best_only=True,
+            monitor='val_loss',
+            mode='min',
             # monitor="mAP",
             # mode='max'
         )
-        callbacks.append(checkpoint)
+       callbacks.append(checkpoint)
+    
+    
+    
+    
+    def slice_epochs (factor_epoch):
+          a = []
+          b = np.ceil(np.log(.02)/np.log(1-factor_epoch))
+          for i in range(int(b)):
+            a.append(1-(1-factor_epoch)**(i+1))
+          return a
 
-    # callbacks.append(keras.callbacks.ReduceLROnPlateau(
-    #     monitor='loss',
-    #     factor=0.1,
-    #     patience=2,
-    #     verbose=1,
-    #     mode='auto',
-    #     min_delta=0.0001,
-    #     cooldown=0,
-    #     min_lr=0
-    # ))
+    total_epochs=args.epochs
+    slice=.75
+    factor=.1
+
+    def lr_schedule(epoch, lr,total_epoch=total_epochs,slice=slice,factor=factor):
+        """Helper function to retrieve the scheduled learning rate based on epoch."""
+
+        if epoch < slice_epochs(slice)[0]*total_epoch :
+            return np.float(lr)
+        for i in range(len(slice_epochs(slice))):
+            if epoch == np.floor(slice_epochs(slice)[i]*total_epoch):
+              #  print(f'...{lr/10}')
+               return np.float(lr*factor)
+        return np.float(lr)
+
+    LearningRateScheduler = keras.callbacks.LearningRateScheduler(lr_schedule,verbose=1))
+    callbacks.append(LearningRateScheduler)
+
+#     callbacks.append(keras.callbacks.ReduceLROnPlateau(
+#         monitor='loss',
+#         factor=0.1,
+#         patience=2,
+#         verbose=1,
+#         mode='auto',
+#         min_delta=0.0001,
+#         cooldown=0,
+#         min_lr=0
+#     ))
 
     return callbacks
 
@@ -342,7 +372,7 @@ def main(args=None):
         model = keras.utils.multi_gpu_model(model, gpus=list(map(int, args.gpu.split(','))))
 
     # compile model
-    model.compile(optimizer=Adam(lr=1e-3), loss={
+    model.compile(optimizer=Adam(lr=1.25e-3), loss={
         'regression': smooth_l1_quad() if args.detect_quadrangle else smooth_l1(),
         'classification': focal()
     }, )
