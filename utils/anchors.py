@@ -81,7 +81,7 @@ def anchor_targets_bbox(
     batch_size = len(image_group)
 
     if detect_quadrangle:
-        regression_batch = np.zeros((batch_size, anchors.shape[0], 9 + 1), dtype=np.float32)
+        regression_batch = np.zeros((batch_size, anchors.shape[0], 7 + 1), dtype=np.float32)
     else:
         regression_batch = np.zeros((batch_size, anchors.shape[0], 4 + 1), dtype=np.float32)
     labels_batch = np.zeros((batch_size, anchors.shape[0], num_classes + 1), dtype=np.float32)
