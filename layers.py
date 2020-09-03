@@ -232,7 +232,7 @@ def filter_detections(
         ratios = keras.backend.gather(ratios, indices)
         alphas = tf.pad(alphas, [[0, pad_size], [0, 0]], constant_values=-1)
         ratios = tf.pad(ratios, [[0, pad_size]], constant_values=-1)
-        alphas.set_shape([max_detections, 4])
+        alphas.set_shape([max_detections, 2])
         ratios.set_shape([max_detections])
         return [boxes, scores, alphas, ratios, labels]
     else:
