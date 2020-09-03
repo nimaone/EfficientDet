@@ -340,7 +340,7 @@ class Generator(keras.utils.Sequence):
             alphas[:, 1] = (ymax - quadrangles[:, 3, 1]) / (ymax - ymin)
             annotations['alphas'] = alphas
             # ratio
-            area1 = 0.5 * alphas[:, 0] * (1 - alphas[:, 3])
+            area1 = 0.5 * alphas[:, 0] * (1 - alphas[:, 1])
             area2 = 0.5 * alphas[:, 1] * (1 - alphas[:, 0])
 #             area3 = 0.5 * alphas[:, 2] * (1 - alphas[:, 1])
 #             area4 = 0.5 * alphas[:, 3] * (1 - alphas[:, 2])
