@@ -125,7 +125,7 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
     
     def slice_epochs (factor_epoch):
           a = []
-          b = np.ceil(np.log(.02)/np.log(1-factor_epoch))
+          b = tf.math.ceil(np.log(.02)/tf.math.log(1-factor_epoch))
           for i in range(int(b)):
             a.append(1-(1-factor_epoch)**(i+1))
           return a
@@ -138,12 +138,12 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
         """Helper function to retrieve the scheduled learning rate based on epoch."""
 
         if epoch < slice_epochs(slice)[0]*total_epoch :
-            return np.float(lr)
+            return lr
         for i in range(len(slice_epochs(slice))):
-            if epoch == np.floor(slice_epochs(slice)[i]*total_epoch):
+            if epoch == tf.math.floor(slice_epochs(slice)[i]*total_epoch):
               #  print(f'...{lr/10}')
-               return np.float(lr*factor)
-        return np.float(lr)
+               return lr*factor
+        return lr
 
     LearningRateScheduler = keras.callbacks.LearningRateScheduler(lr_schedule,verbose=1)
     callbacks.append(LearningRateScheduler)
