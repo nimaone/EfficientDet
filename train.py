@@ -118,7 +118,7 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
             # monitor="mAP",
             # mode='max'
         )
-       callbacks.append(checkpoint)
+        callbacks.append(checkpoint)
     
     
     
@@ -145,7 +145,7 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
                return np.float(lr*factor)
         return np.float(lr)
 
-    LearningRateScheduler = keras.callbacks.LearningRateScheduler(lr_schedule,verbose=1))
+    LearningRateScheduler = keras.callbacks.LearningRateScheduler(lr_schedule,verbose=1)
     callbacks.append(LearningRateScheduler)
 
 #     callbacks.append(keras.callbacks.ReduceLROnPlateau(
