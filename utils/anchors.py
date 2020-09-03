@@ -108,8 +108,8 @@ def anchor_targets_bbox(
 
             regression_batch[index, :, :4] = bbox_transform(anchors, annotations['bboxes'][argmax_overlaps_inds, :])
             if detect_quadrangle:
-                regression_batch[index, :, 4:8] = annotations['alphas'][argmax_overlaps_inds, :]
-                regression_batch[index, :, 8] = annotations['ratios'][argmax_overlaps_inds]
+                regression_batch[index, :, 4:6] = annotations['alphas'][argmax_overlaps_inds, :]
+                regression_batch[index, :, 6] = annotations['ratios'][argmax_overlaps_inds]
 
         # ignore anchors outside of image
         if image.shape:
