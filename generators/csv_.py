@@ -305,7 +305,7 @@ class CSVGenerator(Generator):
                                        [float(annot['x3']), float(annot['y3'])],
                                        [float(annot['x4']), float(annot['y4'])]])
 #                 ordered_quadrangle = self.reorder_vertexes(quadrangle)
-                ordered_quadrangle = self.xywhtheta_to_coords(self.coords_to_xywhtheta(quadrangle.reshape(1,8)).reshape(4,2)
+                ordered_quadrangle = self.xywhtheta_to_coords(self.coords_to_xywhtheta(quadrangle.reshape(1,8))).reshape(4,2)
                 annotations['quadrangles'] = np.concatenate((annotations['quadrangles'], ordered_quadrangle[None]))
                 annotations['bboxes'] = np.concatenate((annotations['bboxes'], [[
                     float(min(annot['x1'], annot['x2'], annot['x3'], annot['x4'])),
@@ -356,60 +356,60 @@ class CSVGenerator(Generator):
         ordered_vertexes[3, 0] = xmin
         return ordered_vertexes
     def xywhtheta_to_coords(self,coordinate, with_label=False):
-    """
-    :param coordinate: format [x_c, y_c, w, h, theta]
-    :return: format [x1, y1, x2, y2, x3, y3, x4, y4]
-    """
+        """
+        :param coordinate: format [x_c, y_c, w, h, theta]
+        :return: format [x1, y1, x2, y2, x3, y3, x4, y4]
+        """
 
-    boxes = []
-    if with_label:
-        for rect in coordinate:
-            box = cv2.boxPoints(((rect[0], rect[1]), (rect[2], rect[3]), rect[4]))
-            box = np.reshape(box, [-1, ])
-            boxes.append([box[0], box[1], box[2], box[3], box[4], box[5], box[6], box[7], rect[5]])
-    else:
-        for rect in coordinate:
-            box = cv2.boxPoints(((rect[0], rect[1]), (rect[2], rect[3]), rect[4]))
-            box = np.reshape(box, [-1, ])
-            boxes.append([box[0], box[1], box[2], box[3], box[4], box[5], box[6], box[7]])
+        boxes = []
+        if with_label:
+            for rect in coordinate:
+                box = cv2.boxPoints(((rect[0], rect[1]), (rect[2], rect[3]), rect[4]))
+                box = np.reshape(box, [-1, ])
+                boxes.append([box[0], box[1], box[2], box[3], box[4], box[5], box[6], box[7], rect[5]])
+        else:
+            for rect in coordinate:
+                box = cv2.boxPoints(((rect[0], rect[1]), (rect[2], rect[3]), rect[4]))
+                box = np.reshape(box, [-1, ])
+                boxes.append([box[0], box[1], box[2], box[3], box[4], box[5], box[6], box[7]])
 
-    return np.array(boxes, dtype=np.float32)
+        return np.array(boxes, dtype=np.float32)
 
 
-def coords_to_xywhtheta(self,coordinate, with_label=False):
-    """
-    :param coordinate: format [x1, y1, x2, y2, x3, y3, x4, y4, (label)]
-    :param with_label: default True
-    :return: format [x_c, y_c, w, h, theta, (label)]
-    """
+    def coords_to_xywhtheta(self,coordinate, with_label=False):
+        """
+        :param coordinate: format [x1, y1, x2, y2, x3, y3, x4, y4, (label)]
+        :param with_label: default True
+        :return: format [x_c, y_c, w, h, theta, (label)]
+        """
 
-    boxes = []
-    if with_label:
-        for rect in coordinate:
-            box = np.int0(rect[:-1])
-            box = box.reshape([4, 2])
-            rect1 = cv2.minAreaRect(box)
+        boxes = []
+        if with_label:
+            for rect in coordinate:
+                box = np.int0(rect[:-1])
+                box = box.reshape([4, 2])
+                rect1 = cv2.minAreaRect(box)
 
-            x, y, w, h, theta = rect1[0][0], rect1[0][1], rect1[1][0], rect1[1][1], rect1[2]
+                x, y, w, h, theta = rect1[0][0], rect1[0][1], rect1[1][0], rect1[1][1], rect1[2]
 
-            if theta == 0:
-                w, h = h, w
-                theta -= 90
+                if theta == 0:
+                    w, h = h, w
+                    theta -= 90
 
-            boxes.append([x, y, w, h, theta, rect[-1]])
+                boxes.append([x, y, w, h, theta, rect[-1]])
 
-    else:
-        for rect in coordinate:
-            box = np.int0(rect)
-            box = box.reshape([4, 2])
-            rect1 = cv2.minAreaRect(box)
+        else:
+            for rect in coordinate:
+                box = np.int0(rect)
+                box = box.reshape([4, 2])
+                rect1 = cv2.minAreaRect(box)
 
-            x, y, w, h, theta = rect1[0][0], rect1[0][1], rect1[1][0], rect1[1][1], rect1[2]
+                x, y, w, h, theta = rect1[0][0], rect1[0][1], rect1[1][0], rect1[1][1], rect1[2]
 
-            if theta == 0:
-                w, h = h, w
-                theta -= 90
+                if theta == 0:
+                    w, h = h, w
+                    theta -= 90
 
-            boxes.append([x, y, w, h, theta])
+                boxes.append([x, y, w, h, theta])
 
-    return np.array(boxes, dtype=np.float32)
+        return np.array(boxes, dtype=np.float32)
