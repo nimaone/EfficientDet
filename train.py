@@ -179,12 +179,14 @@ def create_generators(args):
 
     # create random transform generator for augmenting training data
     if args.random_transform:
+       use_augmentations = True
        horizontal_flip = True 
        vertical_flip = True 
        RandomBrightnessContrast = True 
        RandomColorShift = True 
        RandomRotate90 = True 
     else:
+       use_augmentations = None
        horizontal_flip = None 
        vertical_flip = None 
        RandomBrightnessContrast = None 
@@ -214,6 +216,7 @@ def create_generators(args):
         train_generator = CSVGenerator(
             args.annotations_path,
             args.classes_path,
+            use_augmentations = use_augmentations,
             horizontal_flip = horizontal_flip ,
             vertical_flip = vertical_flip ,
             RandomBrightnessContrast = RandomBrightnessContrast ,
