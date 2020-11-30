@@ -3,6 +3,7 @@ import random
 import warnings
 import cv2
 from tensorflow import keras
+import albumentations as A
 
 from utils.anchors import anchors_for_shape, anchor_targets_bbox, AnchorParameters
 
@@ -18,6 +19,12 @@ class Generator(keras.utils.Sequence):
             image_sizes=(512, 640, 768, 896, 1024, 1280, 1408),
             misc_effect=None,
             visual_effect=None,
+            use_augmentations=None,
+            horizontal_flip = None, 
+            vertical_flip = None, 
+            RandomBrightnessContrast = None, 
+            RandomColorShift = None,
+            RandomRotate90 = None,
             batch_size=1,
             group_method='random',  # one of 'none', 'random', 'ratio'
             shuffle_groups=True,
@@ -35,6 +42,12 @@ class Generator(keras.utils.Sequence):
         """
         self.misc_effect = misc_effect
         self.visual_effect = visual_effect
+        self.use_augmentations = use_augmentations
+        self.horizontal_flip = horizontal_flip
+        self.vertical_flip = vertical_flip
+        self.RandomBrightnessContrast = RandomBrightnessContrast,
+        self.RandomColorShift = RandomColorShift
+        self.RandomRotate90 = RandomRotate90
         self.batch_size = int(batch_size)
         self.group_method = group_method
         self.shuffle_groups = shuffle_groups
@@ -224,6 +237,56 @@ class Generator(keras.utils.Sequence):
         """
         return [self.load_image(image_index) for image_index in group]
 
+    def augmentations_pipeline(self,image_group, annotations_group):
+
+        augmentations_list = list()    
+
+        if self.horizontal_flip:
+            H = A.HorizontalFlip(p=0.5)
+            augmentations_list.append(H)
+
+        if self.vertical_flip:
+            V = A.VerticalFlip(p=0.5)
+            augmentations_list.append(V)
+
+        if self.RandomBrightnessContrast:
+            B = A.RandomBrightnessContrast(p=0.5)
+            augmentations_list.append(B) 
+
+        if self.RandomColorShift:
+            C = A.OneOf([
+                A.HueSaturationValue(p=0.5), 
+                A.RGBShift(p=0.5)
+                    ], p=0.8)
+            augmentations_list.append(C)
+
+        if self.RandomRotate90:
+            R = A.RandomRotate90(p=0.5)
+            augmentations_list.append(R)    
+        for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
+            # preprocess a single group entry
+            quadrangles = annotations['quadrangles'].reshape(-1,2)
+
+            transform = A.Compose(augmentations_list, 
+                                keypoint_params=A.KeypointParams(
+                                    format='xy',remove_invisible=False)
+                            )    
+
+            transformed = transform(image=image,
+                            keypoints=(quadrangles)
+                                    )
+            aug_quadrangles = np.array(transformed['keypoints']).reshape(-1,4,2).astype(np.float32)
+            xmin = np.min(aug_quadrangles, axis=1)[:, 0]
+            ymin = np.min(aug_quadrangles, axis=1)[:, 1]
+            xmax = np.max(aug_quadrangles, axis=1)[:, 0]
+            ymax = np.max(aug_quadrangles, axis=1)[:, 1]
+            annotations['bboxes'] = np.stack([xmin,ymin,xmax,ymax],axis=1)
+            annotations['quadrangles'] = aug_quadrangles
+            image_group[index] = transformed['image']
+
+        return image_group, annotations_group
+    
+
     def random_visual_effect_group_entry(self, image, annotations):
         """
         Randomly transforms image and annotation.
@@ -328,23 +391,23 @@ class Generator(keras.utils.Sequence):
     def compute_alphas_and_ratios(self, annotations_group):
         for i, annotations in enumerate(annotations_group):
             quadrangles = annotations['quadrangles']
-            alphas = np.zeros((quadrangles.shape[0], 2), dtype=np.float32)
+            alphas = np.zeros((quadrangles.shape[0], 4), dtype=np.float32)
             xmin = np.min(quadrangles, axis=1)[:, 0]
             ymin = np.min(quadrangles, axis=1)[:, 1]
             xmax = np.max(quadrangles, axis=1)[:, 0]
             ymax = np.max(quadrangles, axis=1)[:, 1]
             # alpha1, alpha2, alpha3, alpha4
-#             alphas[:, 0] = (quadrangles[:, 0, 0] - xmin) / (xmax - xmin)
-#             alphas[:, 1] = (quadrangles[:, 1, 1] - ymin) / (ymax - ymin)
-            alphas[:, 0] = (xmax - quadrangles[:, 2, 0]) / (xmax - xmin)
-            alphas[:, 1] = (ymax - quadrangles[:, 3, 1]) / (ymax - ymin)
+            alphas[:, 0] = (quadrangles[:, 2, 0] - xmin) / (xmax - xmin)
+            alphas[:, 1] = (quadrangles[:, 3, 1] - ymin) / (ymax - ymin)
+            alphas[:, 2] = (xmax - quadrangles[:, 0, 0]) / (xmax - xmin)
+            alphas[:, 3] = (ymax - quadrangles[:, 1, 1]) / (ymax - ymin)
             annotations['alphas'] = alphas
             # ratio
-            area1 = 0.5 * alphas[:, 0] * (1 - alphas[:, 1])
+            area1 = 0.5 * alphas[:, 0] * (1 - alphas[:, 3])
             area2 = 0.5 * alphas[:, 1] * (1 - alphas[:, 0])
-#             area3 = 0.5 * alphas[:, 2] * (1 - alphas[:, 1])
-#             area4 = 0.5 * alphas[:, 3] * (1 - alphas[:, 2])
-            annotations['ratios'] = 1 - 2*area1 - 2*area2 #- area3 - area4
+            area3 = 0.5 * alphas[:, 2] * (1 - alphas[:, 1])
+            area4 = 0.5 * alphas[:, 3] * (1 - alphas[:, 2])
+            annotations['ratios'] = 1 - area1 - area2 - area3 - area4
 
     def compute_targets(self, image_group, annotations_group):
         """
@@ -374,22 +437,26 @@ class Generator(keras.utils.Sequence):
         annotations_group = self.load_annotations_group(group)
 
         # check validity of annotations
-        image_group, annotations_group = self.filter_annotations(image_group, annotations_group, group)
+        # image_group, annotations_group = self.filter_annotations(image_group, annotations_group, group)
 
         # randomly apply visual effect
-        image_group, annotations_group = self.random_visual_effect_group(image_group, annotations_group)
+        # image_group, annotations_group = self.random_visual_effect_group(image_group, annotations_group)
 
         # randomly transform data
         # image_group, annotations_group = self.random_transform_group(image_group, annotations_group)
 
         # randomly apply misc effect
-        image_group, annotations_group = self.random_misc_group(image_group, annotations_group)
+        # image_group, annotations_group = self.random_misc_group(image_group, annotations_group)
+        
+        if self.use_augmentations:
+
+            image_group, annotations_group = self.augmentations_pipeline(image_group, annotations_group)
 
         # perform preprocessing steps
         image_group, annotations_group = self.preprocess_group(image_group, annotations_group)
 
         # check validity of annotations
-        image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group, group)
+        # image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group, group)
 
         assert len(image_group) != 0
         assert len(image_group) == len(annotations_group)
