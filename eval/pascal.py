@@ -31,7 +31,7 @@ class Evaluate(keras.callbacks.Callback):
         model,
         iou_threshold=0.5,
         score_threshold=0.01,
-        max_detections=100,
+        max_detections=1000,
         save_path=None,
         tensorboard=None,
         weighted_average=False,
@@ -64,42 +64,42 @@ class Evaluate(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-
+        if epoch % 3 == 2:
         # run evaluation
-        average_precisions = evaluate(
-            self.generator,
-            self.active_model,
-            iou_threshold=self.iou_threshold,
-            score_threshold=self.score_threshold,
-            max_detections=self.max_detections,
-            visualize=False
-        )
+            average_precisions = evaluate(
+                self.generator,
+                self.active_model,
+                iou_threshold=self.iou_threshold,
+                score_threshold=self.score_threshold,
+                max_detections=self.max_detections,
+                visualize=False
+            )
 
-        # compute per class average precision
-        total_instances = []
-        precisions = []
-        for label, (average_precision, num_annotations) in average_precisions.items():
-            if self.verbose == 1:
-                print('{:.0f} instances of class'.format(num_annotations),
-                      self.generator.label_to_name(label), 'with average precision: {:.4f}'.format(average_precision))
-            total_instances.append(num_annotations)
-            precisions.append(average_precision)
-        if self.weighted_average:
-            self.mean_ap = sum([a * b for a, b in zip(total_instances, precisions)]) / sum(total_instances)
-        else:
-            self.mean_ap = sum(precisions) / sum(x > 0 for x in total_instances)
-
-        if self.tensorboard is not None:
-            if tf.version.VERSION < '2.0.0' and self.tensorboard.writer is not None:
-                summary = tf.Summary()
-                summary_value = summary.value.add()
-                summary_value.simple_value = self.mean_ap
-                summary_value.tag = "mAP"
-                self.tensorboard.writer.add_summary(summary, epoch)
+            # compute per class average precision
+            total_instances = []
+            precisions = []
+            for label, (average_precision, num_annotations) in average_precisions.items():
+                if self.verbose == 1:
+                    print('{:.0f} instances of class'.format(num_annotations),
+                          self.generator.label_to_name(label), 'with average precision: {:.4f}'.format(average_precision))
+                total_instances.append(num_annotations)
+                precisions.append(average_precision)
+            if self.weighted_average:
+                self.mean_ap = sum([a * b for a, b in zip(total_instances, precisions)]) / sum(total_instances)
             else:
-                tf.summary.scalar('mAP', self.mean_ap, epoch)
+                self.mean_ap = sum(precisions) / sum(x > 0 for x in total_instances)
 
-        logs['mAP'] = self.mean_ap
+            if self.tensorboard is not None:
+                if tf.version.VERSION < '2.0.0' and self.tensorboard.writer is not None:
+                    summary = tf.Summary()
+                    summary_value = summary.value.add()
+                    summary_value.simple_value = self.mean_ap
+                    summary_value.tag = "mAP"
+                    self.tensorboard.writer.add_summary(summary, epoch)
+                else:
+                    tf.summary.scalar('mAP', self.mean_ap, epoch)
 
-        if self.verbose == 1:
-            print('mAP: {:.4f}'.format(self.mean_ap))
+            logs['mAP'] = self.mean_ap
+
+            if self.verbose == 1:
+                print('mAP: {:.4f}'.format(self.mean_ap))
