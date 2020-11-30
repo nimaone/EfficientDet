@@ -143,7 +143,7 @@ def smooth_l1_quad(sigma=3.0):
         """
         # separate target and state
         regression = y_pred
-        regression = tf.concat([regression[..., :4], tf.sigmoid(regression[..., 4:7])], axis=-1)
+        regression = tf.concat([regression[..., :4], tf.sigmoid(regression[..., 4:9])], axis=-1)
         regression_target = y_true[:, :, :-1]
         anchor_state = y_true[:, :, -1]
 
@@ -164,15 +164,15 @@ def smooth_l1_quad(sigma=3.0):
         )
 
         alpha_regression_loss = tf.where(
-            keras.backend.less(regression_diff[..., 4:6], 1.0 / sigma_squared),
-            0.5 * sigma_squared * keras.backend.pow(regression_diff[..., 4:6], 2),
+            keras.backend.less(regression_diff[..., 4:8], 1.0 / sigma_squared),
+            0.5 * sigma_squared * keras.backend.pow(regression_diff[..., 4:8], 2),
             regression_diff[..., 4:6] - 0.5 / sigma_squared
         )
 
         ratio_regression_loss = tf.where(
-            keras.backend.less(regression_diff[..., 6], 1.0 / sigma_squared),
-            0.5 * sigma_squared * keras.backend.pow(regression_diff[..., 6], 2),
-            regression_diff[..., 6] - 0.5 / sigma_squared
+            keras.backend.less(regression_diff[..., 8], 1.0 / sigma_squared),
+            0.5 * sigma_squared * keras.backend.pow(regression_diff[..., 8], 2),
+            regression_diff[..., 8] - 0.5 / sigma_squared
         )
         # compute the normalizer: the number of positive anchors
         normalizer = keras.backend.maximum(1, keras.backend.shape(indices)[0])
