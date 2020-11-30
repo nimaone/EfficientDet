@@ -32,14 +32,20 @@ class AnchorParameters:
 """
 The default anchor parameters.
 """
+# AnchorParameters.default = AnchorParameters(
+#     sizes=[32, 64, 128, 256, 512],
+#     strides=[8, 16, 32, 64, 128],
+#     # ratio=h/w
+#     ratios=np.array([1, 0.5, 2], keras.backend.floatx()),
+#     scales=np.array([2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)], keras.backend.floatx()),
+# )
 AnchorParameters.default = AnchorParameters(
-    sizes=[32, 64, 128, 256, 512],
+    sizes=[16, 32, 64, 128, 256],
     strides=[8, 16, 32, 64, 128],
     # ratio=h/w
-    ratios=np.array([1, 0.5, 2], keras.backend.floatx()),
-    scales=np.array([2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)], keras.backend.floatx()),
+    ratios=np.array([.2,.3,.5,1.,2,3,5], keras.backend.floatx()),
+    scales=np.array([2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0),2], keras.backend.floatx()),
 )
-
 
 def anchor_targets_bbox(
         anchors,
@@ -81,7 +87,7 @@ def anchor_targets_bbox(
     batch_size = len(image_group)
 
     if detect_quadrangle:
-        regression_batch = np.zeros((batch_size, anchors.shape[0], 7 + 1), dtype=np.float32)
+        regression_batch = np.zeros((batch_size, anchors.shape[0], 9 + 1), dtype=np.float32)
     else:
         regression_batch = np.zeros((batch_size, anchors.shape[0], 4 + 1), dtype=np.float32)
     labels_batch = np.zeros((batch_size, anchors.shape[0], num_classes + 1), dtype=np.float32)
@@ -106,10 +112,10 @@ def anchor_targets_bbox(
             labels_batch[
                 index, positive_indices, annotations['labels'][argmax_overlaps_inds[positive_indices]].astype(int)] = 1
 
-            regression_batch[index, :, :4] = bbox_transform(anchors, annotations['bboxes'][argmax_overlaps_inds, :])
+            regression_batch[index, :, :4] = bbox_transform(anchors, annotations['bboxes'][argmax_overlaps_inds, :],[.2,.2,.2,.2])
             if detect_quadrangle:
-                regression_batch[index, :, 4:6] = annotations['alphas'][argmax_overlaps_inds, :]
-                regression_batch[index, :, 6] = annotations['ratios'][argmax_overlaps_inds]
+                regression_batch[index, :, 4:8] = annotations['alphas'][argmax_overlaps_inds, :]
+                regression_batch[index, :, 8] = annotations['ratios'][argmax_overlaps_inds]
 
         # ignore anchors outside of image
         if image.shape:
