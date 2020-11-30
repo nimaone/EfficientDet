@@ -166,7 +166,7 @@ def smooth_l1_quad(sigma=3.0):
         alpha_regression_loss = tf.where(
             keras.backend.less(regression_diff[..., 4:8], 1.0 / sigma_squared),
             0.5 * sigma_squared * keras.backend.pow(regression_diff[..., 4:8], 2),
-            regression_diff[..., 4:6] - 0.5 / sigma_squared
+            regression_diff[..., 4:8] - 0.5 / sigma_squared
         )
 
         ratio_regression_loss = tf.where(
