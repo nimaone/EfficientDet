@@ -16,6 +16,7 @@ limitations under the License.
 
 from utils.compute_overlap import compute_overlap
 from utils.visualization import draw_detections, draw_annotations
+import polyiou
 
 import numpy as np
 import cv2
@@ -86,12 +87,26 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         image, scale = generator.preprocess_image(image)
 
         # run network
-        boxes, scores, *_, labels = model.predict_on_batch([np.expand_dims(image, axis=0)])
+        boxes, scores, alphas, ratios, labels = model.predict_on_batch([np.expand_dims(image, axis=0)])
+        
         boxes /= scale
-        boxes[:, :, 0] = np.clip(boxes[:, :, 0], 0, w - 1)
-        boxes[:, :, 1] = np.clip(boxes[:, :, 1], 0, h - 1)
-        boxes[:, :, 2] = np.clip(boxes[:, :, 2], 0, w - 1)
-        boxes[:, :, 3] = np.clip(boxes[:, :, 3], 0, h - 1)
+#         boxes[:, :, 0] = np.clip(boxes[:, :, 0], 0, w - 1)
+#         boxes[:, :, 1] = np.clip(boxes[:, :, 1], 0, h - 1)
+#         boxes[:, :, 2] = np.clip(boxes[:, :, 2], 0, w - 1)
+#         boxes[:, :, 3] = np.clip(boxes[:, :, 3], 0, h - 1)
+        
+        alphas = 1 / (1 + np.exp(-alphas))
+        ratios = 1 / (1 + np.exp(-ratios))
+        quadrangles = np.zeros(boxes.shape[:2] + (8,))
+        quadrangles[:, :, 0] = boxes[:, :, 0] + (boxes[:, :, 2] - boxes[:, :, 0]) * alphas[:, :, 0]
+        quadrangles[:, :, 1] = boxes[:, :, 1]
+        quadrangles[:, :, 2] = boxes[:, :, 2]
+        quadrangles[:, :, 3] = boxes[:, :, 1] + (boxes[:, :, 3] - boxes[:, :, 1]) * alphas[:, :, 1]
+        quadrangles[:, :, 4] = boxes[:, :, 2] - (boxes[:, :, 2] - boxes[:, :, 0]) * alphas[:, :, 2]
+        quadrangles[:, :, 5] = boxes[:, :, 3]
+        quadrangles[:, :, 6] = boxes[:, :, 0]
+        quadrangles[:, :, 7] = boxes[:, :, 3] - (boxes[:, :, 3] - boxes[:, :, 1]) * alphas[:, :, 3]
+        quadrangles /= scale
 
         # select indices which have a score above the threshold
         indices = np.where(scores[0, :] > score_threshold)[0]
@@ -111,7 +126,7 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         image_labels = labels[0, indices[scores_sort]]
         # (n, 6)
         detections = np.concatenate(
-            [image_boxes, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
+            [image_quadrangles, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
 
         if visualize:
             draw_annotations(src_image, generator.load_annotations(i), label_to_name=generator.label_to_name)
@@ -156,8 +171,8 @@ def _get_annotations(generator):
             if not generator.has_label(label):
                 continue
 
-            all_annotations[i][label] = annotations['bboxes'][annotations['labels'] == label, :].copy()
-
+#             all_annotations[i][label] = annotations['bboxes'][annotations['labels'] == label, :].copy()
+            all_annotations[i][label] = annotations['quadrangles'][annotations['labels'] == label, :].copy()
     return all_annotations
 
 
@@ -216,7 +231,21 @@ def evaluate(
                     false_positives = np.append(false_positives, 1)
                     true_positives = np.append(true_positives, 0)
                     continue
-                overlaps = compute_overlap(np.expand_dims(d, axis=0), annotations)
+                # print(annotations.shape)
+                # print(d.shape)
+                # overlaps = compute_overlap(np.expand_dims(d, axis=0), annotations)
+                annotations = annotations.reshape(-1,8).astype(float)
+                # print(annotations.shape)
+                # print(d[:8].astype(float).shape) 
+                overlaps = []
+                for index, GT in enumerate(annotations):
+
+                    overlap = polyiou.iou_poly(
+                      polyiou.VectorDouble(d[:8].astype(float)),
+                      polyiou.VectorDouble(annotations[index])
+                       )
+                    overlaps.append(overlap)
+                overlaps = np.expand_dims(np.array(overlaps),axis=0)
                 assigned_annotation = np.argmax(overlaps, axis=1)
                 max_overlap = overlaps[0, assigned_annotation]
 
