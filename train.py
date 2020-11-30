@@ -29,8 +29,8 @@ from tensorflow import keras
 import tensorflow.keras.backend as K
 from tensorflow.keras.optimizers import Adam, SGD
 
-from augmentor.color import VisualEffect
-from augmentor.misc import MiscEffect
+# from augmentor.color import VisualEffect
+# from augmentor.misc import MiscEffect
 from model import efficientdet
 from losses import smooth_l1, focal, smooth_l1_quad
 from efficientnet import BASE_WEIGHTS_PATH, WEIGHTS_HASHES
@@ -123,30 +123,30 @@ def create_callbacks(training_model, prediction_model, validation_generator, arg
     
     
     
-    def slice_epochs (factor_epoch):
-          a = []
-          b = tf.math.ceil(np.log(.02)/tf.math.log(1-factor_epoch))
-          for i in range(int(b)):
-            a.append(1-(1-factor_epoch)**(i+1))
-          return a
+#     def slice_epochs (factor_epoch):
+#           a = []
+#           b = tf.math.ceil(np.log(.02)/tf.math.log(1-factor_epoch))
+#           for i in range(int(b)):
+#             a.append(1-(1-factor_epoch)**(i+1))
+#           return a
 
-    total_epochs=args.epochs
-    slice=.75
-    factor=.1
+#     total_epochs=args.epochs
+#     slice=.75
+#     factor=.1
 
-    def lr_schedule(epoch, lr,total_epoch=total_epochs,slice=slice,factor=factor):
-        """Helper function to retrieve the scheduled learning rate based on epoch."""
+#     def lr_schedule(epoch, lr,total_epoch=total_epochs,slice=slice,factor=factor):
+#         """Helper function to retrieve the scheduled learning rate based on epoch."""
 
-        if epoch < slice_epochs(slice)[0]*total_epoch :
-            return lr
-        for i in range(len(slice_epochs(slice))):
-            if epoch == tf.math.floor(slice_epochs(slice)[i]*total_epoch):
-              #  print(f'...{lr/10}')
-               return lr*factor
-        return lr
+#         if epoch < slice_epochs(slice)[0]*total_epoch :
+#             return lr
+#         for i in range(len(slice_epochs(slice))):
+#             if epoch == tf.math.floor(slice_epochs(slice)[i]*total_epoch):
+#               #  print(f'...{lr/10}')
+#                return lr*factor
+#         return lr
 
-    LearningRateScheduler = keras.callbacks.LearningRateScheduler(lr_schedule,verbose=1)
-    callbacks.append(LearningRateScheduler)
+#     LearningRateScheduler = keras.callbacks.LearningRateScheduler(lr_schedule,verbose=1)
+#     callbacks.append(LearningRateScheduler)
 
 #     callbacks.append(keras.callbacks.ReduceLROnPlateau(
 #         monitor='loss',
@@ -179,11 +179,17 @@ def create_generators(args):
 
     # create random transform generator for augmenting training data
     if args.random_transform:
-        misc_effect = MiscEffect()
-        visual_effect = VisualEffect()
+       horizontal_flip = True 
+       vertical_flip = True 
+       RandomBrightnessContrast = True 
+       RandomColorShift = True 
+       RandomRotate90 = True 
     else:
-        misc_effect = None
-        visual_effect = None
+       horizontal_flip = None 
+       vertical_flip = None 
+       RandomBrightnessContrast = None 
+       RandomColorShift = None 
+       RandomRotate90 = None 
 
     if args.dataset_type == 'pascal':
         from generators.pascal import PascalVocGenerator
@@ -208,8 +214,11 @@ def create_generators(args):
         train_generator = CSVGenerator(
             args.annotations_path,
             args.classes_path,
-            misc_effect=misc_effect,
-            visual_effect=visual_effect,
+            horizontal_flip = horizontal_flip ,
+            vertical_flip = vertical_flip ,
+            RandomBrightnessContrast = RandomBrightnessContrast ,
+            RandomColorShift = RandomColorShift ,
+            RandomRotate90 = RandomRotate90 ,
             **common_args
         )
 
@@ -372,7 +381,7 @@ def main(args=None):
         model = keras.utils.multi_gpu_model(model, gpus=list(map(int, args.gpu.split(','))))
 
     # compile model
-    model.compile(optimizer=Adam(lr=1.25e-3), loss={
+    model.compile(optimizer=Adam(lr=2.5e-3), loss={
         'regression': smooth_l1_quad() if args.detect_quadrangle else smooth_l1(),
         'classification': focal()
     }, )
