@@ -103,7 +103,7 @@ class RegressBoxes(keras.layers.Layer):
 
     def call(self, inputs, **kwargs):
         anchors, regression = inputs
-        return bbox_transform_inv(anchors, regression)
+        return bbox_transform_inv(anchors, regression,[.2,.2,.2,.2])
 
     def compute_output_shape(self, input_shape):
         return input_shape[0]
@@ -121,7 +121,7 @@ def filter_detections(
         class_specific_filter=True,
         nms=True,
         score_threshold=0.01,
-        max_detections=100,
+        max_detections=1000,
         nms_threshold=0.5,
         detect_quadrangle=False,
 ):
@@ -232,7 +232,7 @@ def filter_detections(
         ratios = keras.backend.gather(ratios, indices)
         alphas = tf.pad(alphas, [[0, pad_size], [0, 0]], constant_values=-1)
         ratios = tf.pad(ratios, [[0, pad_size]], constant_values=-1)
-        alphas.set_shape([max_detections, 2])
+        alphas.set_shape([max_detections, 4])
         ratios.set_shape([max_detections])
         return [boxes, scores, alphas, ratios, labels]
     else:
@@ -250,7 +250,7 @@ class FilterDetections(keras.layers.Layer):
             class_specific_filter=True,
             nms_threshold=0.5,
             score_threshold=0.01,
-            max_detections=100,
+            max_detections=1000,
             parallel_iterations=32,
             detect_quadrangle=False,
             **kwargs
