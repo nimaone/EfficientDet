@@ -120,6 +120,7 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         # select detections
         # (n, 4)
         image_boxes = boxes[0, indices[scores_sort], :]
+        image_quadrangles = quadrangles[0, indices[scores_sort], :]
         # (n, )
         image_scores = scores[scores_sort]
         # (n, )
