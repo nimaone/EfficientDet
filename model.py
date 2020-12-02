@@ -451,7 +451,7 @@ def efficientdet(phi, num_classes=20, num_anchors=9, weighted_bifpn=False, freez
     anchors = anchors_for_shape((input_size, input_size), anchor_params=anchor_parameters)
     anchors_input = np.expand_dims(anchors, axis=0)
     boxes = RegressBoxes(name='boxes')([anchors_input, regression[..., :4]])
-    boxes = ClipBoxes(name='clipped_boxes')([image_input, boxes])
+#     boxes = ClipBoxes(name='clipped_boxes')([image_input, boxes])
 
     # filter detections (apply NMS / score threshold / select top-k)
     if detect_quadrangle:
