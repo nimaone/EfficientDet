@@ -315,7 +315,7 @@ def parse_args(args):
     parser.add_argument('--steps', help='Number of steps per epoch.', type=int, default=10000)
     parser.add_argument('--snapshot-path',
                         help='Path to store snapshots of models during training',
-                        default='checkpoints/{}'.format(today))
+                        default='/content/drive/MyDrive/checkpoints/{}'.format(today))
     parser.add_argument('--tensorboard-dir', help='Log directory for Tensorboard output',
                         default='logs/{}'.format(today))
     parser.add_argument('--no-snapshots', help='Disable saving snapshots.', dest='snapshots', action='store_false')
