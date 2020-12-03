@@ -250,16 +250,23 @@ class Generator(keras.utils.Sequence):
             augmentations_list.append(V)
 
         if self.RandomBrightnessContrast:
-            B = A.RandomBrightnessContrast(p=0.5)
+            B =  A.OneOf([
+                A.RandomBrightnessContrast(brightness_limit=0.5,
+                                              contrast_limit=0.4),
+                A.RandomGamma(gamma_limit=(50, 150)),
+                A.NoOp()
+                ])
             augmentations_list.append(B) 
 
         if self.RandomColorShift:
             C = A.OneOf([
-                A.HueSaturationValue(p=0.5), 
-                A.RGBShift(p=0.5)
-                    ], p=0.8)
+                A.HueSaturationValue(hue_shift_limit=5, sat_shift_limit=5), 
+                A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15),
+                A.NoOp() 
+                ])
             augmentations_list.append(C)
-
+            augmentations_list.append(A.CLAHE(p=0.8))
+            augmentations_list.append(A.ToGray(p=0.01))
         if self.RandomRotate90:
             R = A.RandomRotate90(p=0.5)
             augmentations_list.append(R)    
