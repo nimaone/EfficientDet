@@ -265,8 +265,8 @@ class Generator(keras.utils.Sequence):
                 A.NoOp() 
                 ])
             augmentations_list.append(C)
-            augmentations_list.append(A.CLAHE(p=0.8))
-            augmentations_list.append(A.ToGray(p=0.01))
+        augmentations_list.append(A.CLAHE(p=0.8))
+        augmentations_list.append(A.ToGray(p=0.01))
         if self.RandomRotate90:
             R = A.RandomRotate90(p=0.5)
             augmentations_list.append(R)    
