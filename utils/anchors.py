@@ -112,7 +112,7 @@ def anchor_targets_bbox(
             labels_batch[
                 index, positive_indices, annotations['labels'][argmax_overlaps_inds[positive_indices]].astype(int)] = 1
 
-            regression_batch[index, :, :4] = bbox_transform(anchors, annotations['bboxes'][argmax_overlaps_inds, :],[.2,.2,.2,.2])
+            regression_batch[index, :, :4] = bbox_transform(anchors, annotations['bboxes'][argmax_overlaps_inds, :])
             if detect_quadrangle:
                 regression_batch[index, :, 4:8] = annotations['alphas'][argmax_overlaps_inds, :]
                 regression_batch[index, :, 8] = annotations['ratios'][argmax_overlaps_inds]
