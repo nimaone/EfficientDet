@@ -182,6 +182,6 @@ def smooth_l1_quad(sigma=3.0):
         alpha_regression_loss = tf.reduce_sum(alpha_regression_loss) / normalizer
         ratio_regression_loss = tf.reduce_sum(ratio_regression_loss) / normalizer
 
-        return box_regression_loss + alpha_regression_loss + 16 * ratio_regression_loss
+        return box_regression_loss + alpha_regression_loss +  ratio_regression_loss
 
     return _smooth_l1
