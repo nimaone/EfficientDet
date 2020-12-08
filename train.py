@@ -29,8 +29,8 @@ from tensorflow import keras
 import tensorflow.keras.backend as K
 from tensorflow.keras.optimizers import Adam, SGD
 
-# from augmentor.color import VisualEffect
-# from augmentor.misc import MiscEffect
+from augmentor.color import VisualEffect
+from augmentor.misc import MiscEffect
 from model import efficientdet
 from losses import smooth_l1, focal, smooth_l1_quad
 from efficientnet import BASE_WEIGHTS_PATH, WEIGHTS_HASHES
@@ -178,6 +178,12 @@ def create_generators(args):
     }
 
     # create random transform generator for augmenting training data
+#     if args.random_transform:
+#         misc_effect = MiscEffect()
+#         visual_effect = VisualEffect()
+#     else:
+#         misc_effect = None
+#         visual_effect = None
     if args.random_transform:
        use_augmentations = True
        horizontal_flip = True 
@@ -195,6 +201,13 @@ def create_generators(args):
 
     if args.dataset_type == 'pascal':
         from generators.pascal import PascalVocGenerator
+#         train_generator = CSVGenerator(
+#             args.annotations_path,
+#             args.classes_path,
+#             misc_effect=misc_effect,
+#             visual_effect=visual_effect,
+#             **common_args
+#         )
         train_generator = PascalVocGenerator(
             args.pascal_path,
             'trainval',
