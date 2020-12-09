@@ -197,23 +197,33 @@ class Generator(keras.utils.Sequence):
             image_height = image.shape[0]
             image_width = image.shape[1]
             # x1
-            annotations['bboxes'][:, 0] = np.clip(annotations['bboxes'][:, 0], 0, image_width - 2)
-            # y1
-            annotations['bboxes'][:, 1] = np.clip(annotations['bboxes'][:, 1], 0, image_height - 2)
-            # x2
-            annotations['bboxes'][:, 2] = np.clip(annotations['bboxes'][:, 2], 1, image_width - 1)
-            # y2
-            annotations['bboxes'][:, 3] = np.clip(annotations['bboxes'][:, 3], 1, image_height - 1)
+#             annotations['bboxes'][:, 0] = np.clip(annotations['bboxes'][:, 0], 0, image_width - 2)
+#             # y1
+#             annotations['bboxes'][:, 1] = np.clip(annotations['bboxes'][:, 1], 0, image_height - 2)
+#             # x2
+#             annotations['bboxes'][:, 2] = np.clip(annotations['bboxes'][:, 2], 1, image_width - 1)
+#             # y2
+#             annotations['bboxes'][:, 3] = np.clip(annotations['bboxes'][:, 3], 1, image_height - 1)
             # test x2 < x1 | y2 < y1 | x1 < 0 | y1 < 0 | x2 <= 0 | y2 <= 0 | x2 >= image.shape[1] | y2 >= image.shape[0]
+            out_indices = np.where(
+                ((annotations['bboxes'][:, 2] + annotations['bboxes'][:, 0])/2 < 0) |
+                ((annotations['bboxes'][:, 3] + annotations['bboxes'][:, 1])/2 < 0) |
+                ((annotations['bboxes'][:, 2] + annotations['bboxes'][:, 0])/2 > image_width) |
+                ((annotations['bboxes'][:, 3] + annotations['bboxes'][:, 1])/2 > image_height)
+            )[0]
             small_indices = np.where(
                 (annotations['bboxes'][:, 2] - annotations['bboxes'][:, 0] < 3) |
                 (annotations['bboxes'][:, 3] - annotations['bboxes'][:, 1] < 3)
             )[0]
 
             # delete invalid indices
-            if len(small_indices):
+            if len(small_indices) or len(out_indices):
+                print(!!!!!!!!!!)
+                
                 for k in annotations_group[index].keys():
                     annotations_group[index][k] = np.delete(annotations[k], small_indices, axis=0)
+                    annotations_group[index][k] = np.delete(annotations[k], out_indices, axis=0)
+                    print(annotations['bboxes'][out_indices])
                 # import cv2
                 # for invalid_index in small_indices:
                 #     x1, y1, x2, y2 = annotations['bboxes'][invalid_index]
@@ -267,17 +277,35 @@ class Generator(keras.utils.Sequence):
             augmentations_list.append(C)
         augmentations_list.append(A.CLAHE(p=0.8))
         augmentations_list.append(A.ToGray(p=0.01))
+        
         if self.RandomRotate90:
             R = A.RandomRotate90(p=0.5)
-            augmentations_list.append(R)    
+            augmentations_list.append(R)   
+#         augmentations_list= [
+#             A.RandomSizedCrop(min_max_height=(800, 800), height=1024, width=1024, p=0.5),
+#             A.OneOf([
+#                 A.HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit= 0.2, 
+#                                      val_shift_limit=0.2, p=0.9),
+#                 A.RandomBrightnessContrast(brightness_limit=0.2, 
+#                                            contrast_limit=0.2, p=0.9),
+#             ],p=0.9),
+#             A.Rotate (limit=np.range(-90, 90+16, 15), interpolation=1, border_mode=0, p=0.5)
+#             A.ToGray(p=0.01),
+#             A.HorizontalFlip(p=0.5),
+#             A.VerticalFlip(p=0.5),
+#             A.Resize(height=640, width=640, p=1),
+#         ]
+        
+            
+        transform = A.Compose(augmentations_list, 
+                                keypoint_params=A.KeypointParams(
+                                    format='xy',remove_invisible=False),
+                                p=1
+                            )
         for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
             # preprocess a single group entry
             quadrangles = annotations['quadrangles'].reshape(-1,2)
 
-            transform = A.Compose(augmentations_list, 
-                                keypoint_params=A.KeypointParams(
-                                    format='xy',remove_invisible=False)
-                            )    
 
             transformed = transform(image=image,
                             keypoints=(quadrangles)
@@ -463,7 +491,7 @@ class Generator(keras.utils.Sequence):
         image_group, annotations_group = self.preprocess_group(image_group, annotations_group)
 
         # check validity of annotations
-        # image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group, group)
+        image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group, group)
 
         assert len(image_group) != 0
         assert len(image_group) == len(annotations_group)
