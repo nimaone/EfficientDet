@@ -218,7 +218,7 @@ class Generator(keras.utils.Sequence):
 
             # delete invalid indices
             if len(small_indices) or len(out_indices):
-                print(!!!!!!!!!!)
+#                 print('!!!!!!!!!!')
                 
                 for k in annotations_group[index].keys():
                     annotations_group[index][k] = np.delete(annotations[k], small_indices, axis=0)
@@ -380,13 +380,18 @@ class Generator(keras.utils.Sequence):
 
         # preprocess the image
         image, scale = self.preprocess_image(image)
-
-        # apply resizing to annotations too
         annotations['bboxes'] *= scale
         if self.detect_quadrangle:
             annotations['quadrangles'] *= scale
-        return image, annotations
-
+            quadrangles = np.array([self.xywhtheta_to_coords(
+                                    self.coords_to_xywhtheta(q.reshape(1,8)))
+                                    for q in annotations['quadrangles']
+                                                            ]
+                                      ).reshape(-1,4,2)
+            quadrangles = np.array([self.reorder_vertexes(q) for q in quadrangles])
+            annotations['quadrangles'] = quadrangles 
+        # apply resizing to annotations too
+    
     def preprocess_group(self, image_group, annotations_group):
         """
         Preprocess each image and its annotations in its group.
@@ -399,7 +404,98 @@ class Generator(keras.utils.Sequence):
                                                                                        annotations_group[index])
 
         return image_group, annotations_group
+    def xywhtheta_to_coords(self,coordinate, with_label=False):
+        """
+        :param coordinate: format [x_c, y_c, w, h, theta]
+        :return: format [x1, y1, x2, y2, x3, y3, x4, y4]
+        """
 
+        boxes = []
+        if with_label:
+            for rect in coordinate:
+                box = cv2.boxPoints(((rect[0], rect[1]), (rect[2], rect[3]), rect[4]))
+                box = np.reshape(box, [-1, ])
+                boxes.append([box[0], box[1], box[2], box[3], box[4], box[5], box[6], box[7], rect[5]])
+        else:
+            for rect in coordinate:
+                box = cv2.boxPoints(((rect[0], rect[1]), (rect[2], rect[3]), rect[4]))
+                box = np.reshape(box, [-1, ])
+                boxes.append([box[0], box[1], box[2], box[3], box[4], box[5], box[6], box[7]])
+
+        return np.array(boxes, dtype=np.float32)
+
+
+    def coords_to_xywhtheta(self,coordinate, with_label=False):
+        """
+        :param coordinate: format [x1, y1, x2, y2, x3, y3, x4, y4, (label)]
+        :param with_label: default True
+        :return: format [x_c, y_c, w, h, theta, (label)]
+        """
+
+        boxes = []
+        if with_label:
+            for rect in coordinate:
+                box = np.int0(rect[:-1])
+                box = box.reshape([4, 2])
+                rect1 = cv2.minAreaRect(box)
+
+                x, y, w, h, theta = rect1[0][0], rect1[0][1], rect1[1][0], rect1[1][1], rect1[2]
+
+                if theta == 0:
+                    w, h = h, w
+                    theta -= 90
+
+                boxes.append([x, y, w, h, theta, rect[-1]])
+
+        else:
+            for rect in coordinate:
+                box = np.int0(rect)
+                box = box.reshape([4, 2])
+                rect1 = cv2.minAreaRect(box)
+
+                x, y, w, h, theta = rect1[0][0], rect1[0][1], rect1[1][0], rect1[1][1], rect1[2]
+
+                if theta == 0:
+                    w, h = h, w
+                    theta -= 90
+
+                boxes.append([x, y, w, h, theta])
+
+        return np.array(boxes, dtype=np.float32)
+    def reorder_vertexes(self, vertexes):
+        """
+        reorder vertexes as the paper shows, (top, right, bottom, left)
+        Args:
+            vertexes:
+
+        Returns:
+
+        """
+        assert vertexes.shape == (4, 2)
+        xmin, ymin = np.min(vertexes, axis=0)
+        xmax, ymax = np.max(vertexes, axis=0)
+
+        # determine the first point with the smallest y,
+        # if two vertexes has same y, choose that with smaller x,
+        ordered_idxes = np.argsort(vertexes, axis=0)
+        ymin1_idx = ordered_idxes[0, 1]
+        ymin2_idx = ordered_idxes[1, 1]
+        if vertexes[ymin1_idx, 1] == vertexes[ymin2_idx, 1]:
+            if vertexes[ymin1_idx, 0] <= vertexes[ymin2_idx, 0]:
+                first_vertex_idx = ymin1_idx
+            else:
+                first_vertex_idx = ymin2_idx
+        else:
+            first_vertex_idx = ymin1_idx
+        ordered_idxes = [(first_vertex_idx + i) % 4 for i in range(4)]
+        ordered_vertexes = vertexes[ordered_idxes]
+        # drag the point to the corresponding edge
+        ordered_vertexes[0, 1] = ymin
+        ordered_vertexes[1, 0] = xmax
+        ordered_vertexes[2, 1] = ymax
+        ordered_vertexes[3, 0] = xmin
+        return ordered_vertexes
+    
     def group_images(self):
         """
         Order the images according to self.order and makes groups of self.batch_size.
@@ -431,6 +527,7 @@ class Generator(keras.utils.Sequence):
             ymin = np.min(quadrangles, axis=1)[:, 1]
             xmax = np.max(quadrangles, axis=1)[:, 0]
             ymax = np.max(quadrangles, axis=1)[:, 1]
+            annotations['bboxes'] = np.vstack([xmin,ymin,xmax,ymax]).T
             # alpha1, alpha2, alpha3, alpha4
             alphas[:, 0] = (quadrangles[:, 2, 0] - xmin) / (xmax - xmin)
             alphas[:, 1] = (quadrangles[:, 3, 1] - ymin) / (ymax - ymin)
@@ -443,7 +540,7 @@ class Generator(keras.utils.Sequence):
             area3 = 0.5 * alphas[:, 2] * (1 - alphas[:, 1])
             area4 = 0.5 * alphas[:, 3] * (1 - alphas[:, 2])
             annotations['ratios'] = 1 - area1 - area2 - area3 - area4
-
+            return annotations_group
     def compute_targets(self, image_group, annotations_group):
         """
         Compute target outputs for the network using images and their annotations.
@@ -498,7 +595,7 @@ class Generator(keras.utils.Sequence):
 
         if self.detect_quadrangle:
             # compute alphas and ratio for targets
-            self.compute_alphas_and_ratios(annotations_group)
+            annotations_group = self.compute_alphas_and_ratios(annotations_group)
 
         # compute network inputs
         inputs = self.compute_inputs(image_group, annotations_group)
