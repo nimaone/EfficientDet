@@ -186,7 +186,7 @@ class Generator(keras.utils.Sequence):
             #     ))
         return image_group, annotations_group
 
-    def clip_transformed_annotations(self, image_group, annotations_group, group):
+    def clip_transformed_annotations(self, image_group, annotations_group):
         """
         Filter annotations by removing those that are outside of the image bounds or whose width/height < 0.
         """
@@ -223,7 +223,7 @@ class Generator(keras.utils.Sequence):
                 for k in annotations_group[index].keys():
                     annotations_group[index][k] = np.delete(annotations[k], small_indices, axis=0)
                     annotations_group[index][k] = np.delete(annotations[k], out_indices, axis=0)
-#                     print(annotations['bboxes'][out_indices])
+                    # print(annotations['bboxes'][out_indices])
                 # import cv2
                 # for invalid_index in small_indices:
                 #     x1, y1, x2, y2 = annotations['bboxes'][invalid_index]
@@ -249,65 +249,73 @@ class Generator(keras.utils.Sequence):
 
     def augmentations_pipeline(self,image_group, annotations_group):
 
-        augmentations_list = list()    
+        # augmentations_list = list()    
 
-        if self.horizontal_flip:
-            H = A.HorizontalFlip(p=0.5)
-            augmentations_list.append(H)
+        # if self.horizontal_flip:
+        #     H = A.HorizontalFlip(p=0.5)
+        #     augmentations_list.append(H)
 
-        if self.vertical_flip:
-            V = A.VerticalFlip(p=0.5)
-            augmentations_list.append(V)
+        # if self.vertical_flip:
+        #     V = A.VerticalFlip(p=0.5)
+        #     augmentations_list.append(V)
 
-        if self.RandomBrightnessContrast:
-            B =  A.OneOf([
-                A.RandomBrightnessContrast(brightness_limit=0.3,
-                                           contrast_limit=0.2,
-                                           p=.8),
-                A.RandomGamma(gamma_limit=(80, 120))
-                ],p=.8)
-            augmentations_list.append(B) 
+        # if self.RandomBrightnessContrast:
+        #     B =  A.OneOf([
+        #         A.RandomBrightnessContrast(brightness_limit=0.3,
+        #                                    contrast_limit=0.2,
+        #                                    p=.8),
+        #         A.RandomGamma(gamma_limit=(80, 120))
+        #         ],p=.8)
+        #     augmentations_list.append(B) 
 
-        if self.RandomColorShift:
-            C = A.OneOf([
-                A.HueSaturationValue(hue_shift_limit=.2, sat_shift_limit=.2,
-                                     val_shift_limit=0.2,p=.8), 
-                A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15)
-                ])
-            augmentations_list.append(C)
-        augmentations_list.append(A.CLAHE(p=0.8))
-        augmentations_list.append(A.ToGray(p=0.01))
+        # if self.RandomColorShift:
+        #     C = A.OneOf([
+        #         A.HueSaturationValue(hue_shift_limit=.2, sat_shift_limit=.2,
+        #                              val_shift_limit=0.2,p=.8), 
+        #         A.RGBShift(r_shift_limit=20, b_shift_limit=15, g_shift_limit=15)
+        #         ])
+        #     augmentations_list.append(C)
+        # augmentations_list.append(A.CLAHE(p=0.8))
+        # augmentations_list.append(A.ToGray(p=0.01))
         
-        if self.RandomRotate90:
-            R = A.RandomRotate90(p=0.5)
-            augmentations_list.append(R)   
-#         augmentations_list= [
-#             A.RandomSizedCrop(min_max_height=(800, 800), height=1024, width=1024, p=0.5),
-#             A.OneOf([
-#                 A.HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit= 0.2, 
-#                                      val_shift_limit=0.2, p=0.9),
-#                 A.RandomBrightnessContrast(brightness_limit=0.2, 
-#                                            contrast_limit=0.2, p=0.9),
-#             ],p=0.9),
-#             A.Rotate (limit=list(np.arange(-90, 90+16, 15)), interpolation=1, border_mode=0, p=0.5),
-#             A.ToGray(p=0.01),
-#             A.HorizontalFlip(p=0.5),
-#             A.VerticalFlip(p=0.5),
-#             A.Resize(height=640, width=640, p=1),
-#         ]
+        # if self.RandomRotate90:
+        #     R = A.RandomRotate90(p=0.5)
+        #     augmentations_list.append(R)   
+        augmentations_list_1= [
+            A.Resize(height=1024, width=1024, p=1),
+            A.RandomSizedCrop(min_max_height=(824, 824), height=1024, width=1024, p=0.5),
+            A.OneOf([
+                A.HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit= 0.2, 
+                                     val_shift_limit=0.2, p=0.9),
+                A.RandomBrightnessContrast(brightness_limit=0.2, 
+                                           contrast_limit=0.2, p=0.9),
+                  ],p=0.9),]
+
+        augmentations_list_2 = [         
+            A.Rotate (limit=list(np.arange(-90, 90+16, 15)), interpolation=1, border_mode=0, p=0.6),
+            A.ToGray(p=0.01),
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.Resize(height=640, width=640, p=1),
+        ]
         
             
-        transform = A.Compose(augmentations_list, 
+        transform_1 = A.Compose(augmentations_list_1, 
                                 keypoint_params=A.KeypointParams(
                                     format='xy',remove_invisible=False),
                                 p=1
                             )
+        transform_2 = A.Compose(augmentations_list_2, 
+                                keypoint_params=A.KeypointParams(
+                                    format='xy',remove_invisible=False),
+                                p=1
+                            )                        
         for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
             # preprocess a single group entry
             quadrangles = annotations['quadrangles'].reshape(-1,2)
 
 
-            transformed = transform(image=image,
+            transformed = transform_1(image=image,
                             keypoints=(quadrangles)
                                     )
             aug_quadrangles = np.array(transformed['keypoints']).reshape(-1,4,2).astype(np.float32)
@@ -318,7 +326,24 @@ class Generator(keras.utils.Sequence):
             annotations['bboxes'] = np.stack([xmin,ymin,xmax,ymax],axis=1)
             annotations['quadrangles'] = aug_quadrangles
             image_group[index] = transformed['image']
+        image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group)
 
+        for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
+            # preprocess a single group entry
+            quadrangles = annotations['quadrangles'].reshape(-1,2)
+
+
+            transformed = transform_2(image=image,
+                            keypoints=(quadrangles)
+                                    )
+            aug_quadrangles = np.array(transformed['keypoints']).reshape(-1,4,2).astype(np.float32)
+            xmin = np.min(aug_quadrangles, axis=1)[:, 0]
+            ymin = np.min(aug_quadrangles, axis=1)[:, 1]
+            xmax = np.max(aug_quadrangles, axis=1)[:, 0]
+            ymax = np.max(aug_quadrangles, axis=1)[:, 1]
+            annotations['bboxes'] = np.stack([xmin,ymin,xmax,ymax],axis=1)
+            annotations['quadrangles'] = aug_quadrangles
+            image_group[index] = transformed['image']
         return image_group, annotations_group
     
 
@@ -380,6 +405,9 @@ class Generator(keras.utils.Sequence):
 
         # preprocess the image
         image, scale = self.preprocess_image(image)
+        # print(image.shape)
+        # print(scale)
+
         annotations['bboxes'] *= scale
         if self.detect_quadrangle:
             annotations['quadrangles'] *= scale
@@ -390,6 +418,8 @@ class Generator(keras.utils.Sequence):
                                       ).reshape(-1,4,2)
             quadrangles = np.array([self.reorder_vertexes(q) for q in quadrangles])
             annotations['quadrangles'] = quadrangles 
+            # print(quadrangles.shape)
+        return image,annotations
         # apply resizing to annotations too
     
     def preprocess_group(self, image_group, annotations_group):
@@ -397,11 +427,12 @@ class Generator(keras.utils.Sequence):
         Preprocess each image and its annotations in its group.
         """
         assert (len(image_group) == len(annotations_group))
+        # print(len(image_group))
+        # print(len(annotations_group))
 
-        for index in range(len(image_group)):
+        for index,(image,annotations) in enumerate( zip(image_group,annotations_group)):
             # preprocess a single group entry
-            image_group[index], annotations_group[index] = self.preprocess_group_entry(image_group[index],
-                                                                                       annotations_group[index])
+            image_group[index], annotations_group[index] = self.preprocess_group_entry(image,annotations)
 
         return image_group, annotations_group
     def xywhtheta_to_coords(self,coordinate, with_label=False):
@@ -521,6 +552,8 @@ class Generator(keras.utils.Sequence):
 
     def compute_alphas_and_ratios(self, annotations_group):
         for i, annotations in enumerate(annotations_group):
+            
+            # print(quadrangles)
             quadrangles = annotations['quadrangles']
             alphas = np.zeros((quadrangles.shape[0], 4), dtype=np.float32)
             xmin = np.min(quadrangles, axis=1)[:, 0]
@@ -529,10 +562,10 @@ class Generator(keras.utils.Sequence):
             ymax = np.max(quadrangles, axis=1)[:, 1]
             annotations['bboxes'] = np.vstack([xmin,ymin,xmax,ymax]).T
             # alpha1, alpha2, alpha3, alpha4
-            alphas[:, 0] = (quadrangles[:, 2, 0] - xmin) / (xmax - xmin)
-            alphas[:, 1] = (quadrangles[:, 3, 1] - ymin) / (ymax - ymin)
-            alphas[:, 2] = (xmax - quadrangles[:, 0, 0]) / (xmax - xmin)
-            alphas[:, 3] = (ymax - quadrangles[:, 1, 1]) / (ymax - ymin)
+            alphas[:, 0] = (quadrangles[:, 0, 0] - xmin) / (xmax - xmin)
+            alphas[:, 1] = (quadrangles[:, 1, 1] - ymin) / (ymax - ymin)
+            alphas[:, 2] = (xmax - quadrangles[:, 2, 0]) / (xmax - xmin)
+            alphas[:, 3] = (ymax - quadrangles[:, 3, 1]) / (ymax - ymin)
             annotations['alphas'] = alphas
             # ratio
             area1 = 0.5 * alphas[:, 0] * (1 - alphas[:, 3])
@@ -540,7 +573,7 @@ class Generator(keras.utils.Sequence):
             area3 = 0.5 * alphas[:, 2] * (1 - alphas[:, 1])
             area4 = 0.5 * alphas[:, 3] * (1 - alphas[:, 2])
             annotations['ratios'] = 1 - area1 - area2 - area3 - area4
-            return annotations_group
+        return annotations_group
     def compute_targets(self, image_group, annotations_group):
         """
         Compute target outputs for the network using images and their annotations.
@@ -548,7 +581,7 @@ class Generator(keras.utils.Sequence):
         """
         Compute target outputs for the network using images and their annotations.
         """
-
+        print(annotations_group)
         batches_targets = anchor_targets_bbox(
             self.anchors,
             image_group,
@@ -585,10 +618,13 @@ class Generator(keras.utils.Sequence):
             image_group, annotations_group = self.augmentations_pipeline(image_group, annotations_group)
 
         # perform preprocessing steps
+        # print((image_group)[0])
+        # print((annotations_group)[0])
+
         image_group, annotations_group = self.preprocess_group(image_group, annotations_group)
 
         # check validity of annotations
-        image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group, group)
+        image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group)
 
         assert len(image_group) != 0
         assert len(image_group) == len(annotations_group)
@@ -636,12 +672,12 @@ class Generator(keras.utils.Sequence):
             resized_width = self.image_size
 
         image = cv2.resize(image, (resized_width, resized_height))
-        image = image.astype(np.float32)
-        image /= 255.
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
-        image -= mean
-        image /= std
+        # image = image.astype(np.float32)
+        # image /= 255.
+        # mean = [0.485, 0.456, 0.406]
+        # std = [0.229, 0.224, 0.225]
+        # image -= mean
+        # image /= std
         pad_h = self.image_size - resized_height
         pad_w = self.image_size - resized_width
         image = np.pad(image, [(0, pad_h), (0, pad_w), (0, 0)], mode='constant')
