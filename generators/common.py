@@ -581,7 +581,7 @@ class Generator(keras.utils.Sequence):
         """
         Compute target outputs for the network using images and their annotations.
         """
-        print(annotations_group)
+#         print(annotations_group)
         batches_targets = anchor_targets_bbox(
             self.anchors,
             image_group,
