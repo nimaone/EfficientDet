@@ -223,7 +223,7 @@ class Generator(keras.utils.Sequence):
                 for k in annotations_group[index].keys():
                     annotations_group[index][k] = np.delete(annotations[k], small_indices, axis=0)
                     annotations_group[index][k] = np.delete(annotations[k], out_indices, axis=0)
-                    print(annotations['bboxes'][out_indices])
+#                     print(annotations['bboxes'][out_indices])
                 # import cv2
                 # for invalid_index in small_indices:
                 #     x1, y1, x2, y2 = annotations['bboxes'][invalid_index]
@@ -289,7 +289,7 @@ class Generator(keras.utils.Sequence):
 #                 A.RandomBrightnessContrast(brightness_limit=0.2, 
 #                                            contrast_limit=0.2, p=0.9),
 #             ],p=0.9),
-#             A.Rotate (limit=np.range(-90, 90+16, 15), interpolation=1, border_mode=0, p=0.5)
+#             A.Rotate (limit=list(np.arange(-90, 90+16, 15)), interpolation=1, border_mode=0, p=0.5),
 #             A.ToGray(p=0.01),
 #             A.HorizontalFlip(p=0.5),
 #             A.VerticalFlip(p=0.5),
