@@ -672,12 +672,12 @@ class Generator(keras.utils.Sequence):
             resized_width = self.image_size
 
         image = cv2.resize(image, (resized_width, resized_height))
-        # image = image.astype(np.float32)
-        # image /= 255.
-        # mean = [0.485, 0.456, 0.406]
-        # std = [0.229, 0.224, 0.225]
-        # image -= mean
-        # image /= std
+        image = image.astype(np.float32)
+        image /= 255.
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        image -= mean
+        image /= std
         pad_h = self.image_size - resized_height
         pad_w = self.image_size - resized_width
         image = np.pad(image, [(0, pad_h), (0, pad_w), (0, 0)], mode='constant')
