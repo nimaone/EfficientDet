@@ -282,17 +282,17 @@ class Generator(keras.utils.Sequence):
         #     R = A.RandomRotate90(p=0.5)
         #     augmentations_list.append(R)   
         augmentations_list_1= [
-            A.Resize(height=1024, width=1024, p=1),
-            A.RandomSizedCrop(min_max_height=(824, 824), height=1024, width=1024, p=0.5),
+#             A.Resize(height=1024, width=1024, p=1),
+#             A.RandomSizedCrop(min_max_height=(824, 824), height=1024, width=1024, p=0.5),
             A.OneOf([
                 A.HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit= 0.2, 
                                      val_shift_limit=0.2, p=0.9),
                 A.RandomBrightnessContrast(brightness_limit=0.2, 
                                            contrast_limit=0.2, p=0.9),
-                  ],p=0.9),]
+                  ],p=0.9),
 
-        augmentations_list_2 = [         
-            A.Rotate (limit=list(np.arange(-90, 90+16, 15)), interpolation=1, border_mode=0, p=0.6),
+#         augmentations_list_2 = [         
+            A.Rotate (limit=list(np.arange(-90, 90+16, 15)), interpolation=1, border_mode=0, p=0.8),
             A.ToGray(p=0.01),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
@@ -305,11 +305,11 @@ class Generator(keras.utils.Sequence):
                                     format='xy',remove_invisible=False),
                                 p=1
                             )
-        transform_2 = A.Compose(augmentations_list_2, 
-                                keypoint_params=A.KeypointParams(
-                                    format='xy',remove_invisible=False),
-                                p=1
-                            )                        
+#         transform_2 = A.Compose(augmentations_list_2, 
+#                                 keypoint_params=A.KeypointParams(
+#                                     format='xy',remove_invisible=False),
+#                                 p=1
+#                             )                        
         for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
             # preprocess a single group entry
             quadrangles = annotations['quadrangles'].reshape(-1,2)
@@ -326,24 +326,24 @@ class Generator(keras.utils.Sequence):
             annotations['bboxes'] = np.stack([xmin,ymin,xmax,ymax],axis=1)
             annotations['quadrangles'] = aug_quadrangles
             image_group[index] = transformed['image']
-        image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group)
+#         image_group, annotations_group = self.clip_transformed_annotations(image_group, annotations_group)
 
-        for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
-            # preprocess a single group entry
-            quadrangles = annotations['quadrangles'].reshape(-1,2)
+#         for index, (image, annotations) in enumerate(zip(image_group, annotations_group)):
+#             # preprocess a single group entry
+#             quadrangles = annotations['quadrangles'].reshape(-1,2)
 
 
-            transformed = transform_2(image=image,
-                            keypoints=(quadrangles)
-                                    )
-            aug_quadrangles = np.array(transformed['keypoints']).reshape(-1,4,2).astype(np.float32)
-            xmin = np.min(aug_quadrangles, axis=1)[:, 0]
-            ymin = np.min(aug_quadrangles, axis=1)[:, 1]
-            xmax = np.max(aug_quadrangles, axis=1)[:, 0]
-            ymax = np.max(aug_quadrangles, axis=1)[:, 1]
-            annotations['bboxes'] = np.stack([xmin,ymin,xmax,ymax],axis=1)
-            annotations['quadrangles'] = aug_quadrangles
-            image_group[index] = transformed['image']
+#             transformed = transform_2(image=image,
+#                             keypoints=(quadrangles)
+#                                     )
+#             aug_quadrangles = np.array(transformed['keypoints']).reshape(-1,4,2).astype(np.float32)
+#             xmin = np.min(aug_quadrangles, axis=1)[:, 0]
+#             ymin = np.min(aug_quadrangles, axis=1)[:, 1]
+#             xmax = np.max(aug_quadrangles, axis=1)[:, 0]
+#             ymax = np.max(aug_quadrangles, axis=1)[:, 1]
+#             annotations['bboxes'] = np.stack([xmin,ymin,xmax,ymax],axis=1)
+#             annotations['quadrangles'] = aug_quadrangles
+#             image_group[index] = transformed['image']
         return image_group, annotations_group
     
 
