@@ -11,7 +11,7 @@ def rotate(image, annotations, prob=0.5, border_value=(128, 128, 128)):
     if random_prob < (1 - prob):
         return image, annotations
 
-    rotate_degree = np.random.uniform(low=-10, high=10)
+    rotate_degree = np.random.uniform(low=-70, high=70)
     h, w = image.shape[:2]
     # Compute the rotation matrix.
     M = cv2.getRotationMatrix2D(center=(w / 2, h / 2),
