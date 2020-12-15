@@ -178,36 +178,30 @@ def create_generators(args):
     }
 
     # create random transform generator for augmenting training data
-#     if args.random_transform:
-#         misc_effect = MiscEffect()
-#         visual_effect = VisualEffect()
-#     else:
-#         misc_effect = None
-#         visual_effect = None
     if args.random_transform:
-       use_augmentations = True
-       horizontal_flip = True 
-       vertical_flip = True 
-       RandomBrightnessContrast = True 
-       RandomColorShift = True 
-       RandomRotate90 = True 
+        misc_effect = MiscEffect()
+        visual_effect = VisualEffect()
     else:
-       use_augmentations = None
-       horizontal_flip = None 
-       vertical_flip = None 
-       RandomBrightnessContrast = None 
-       RandomColorShift = None 
-       RandomRotate90 = None 
+        misc_effect = None
+        visual_effect = None
+#     if args.random_transform:
+#        use_augmentations = True
+#        horizontal_flip = True 
+#        vertical_flip = True 
+#        RandomBrightnessContrast = True 
+#        RandomColorShift = True 
+#        RandomRotate90 = True 
+#     else:
+#        use_augmentations = None
+#        horizontal_flip = None 
+#        vertical_flip = None 
+#        RandomBrightnessContrast = None 
+#        RandomColorShift = None 
+#        RandomRotate90 = None 
 
     if args.dataset_type == 'pascal':
         from generators.pascal import PascalVocGenerator
-#         train_generator = CSVGenerator(
-#             args.annotations_path,
-#             args.classes_path,
-#             misc_effect=misc_effect,
-#             visual_effect=visual_effect,
-#             **common_args
-#         )
+        
         train_generator = PascalVocGenerator(
             args.pascal_path,
             'trainval',
@@ -229,14 +223,21 @@ def create_generators(args):
         train_generator = CSVGenerator(
             args.annotations_path,
             args.classes_path,
-            use_augmentations = use_augmentations,
-            horizontal_flip = horizontal_flip ,
-            vertical_flip = vertical_flip ,
-            RandomBrightnessContrast = RandomBrightnessContrast ,
-            RandomColorShift = RandomColorShift ,
-            RandomRotate90 = RandomRotate90 ,
+            misc_effect=misc_effect,
+            visual_effect=visual_effect,
             **common_args
         )
+#         train_generator = CSVGenerator(
+#             args.annotations_path,
+#             args.classes_path,
+#             use_augmentations = use_augmentations,
+#             horizontal_flip = horizontal_flip ,
+#             vertical_flip = vertical_flip ,
+#             RandomBrightnessContrast = RandomBrightnessContrast ,
+#             RandomColorShift = RandomColorShift ,
+#             RandomRotate90 = RandomRotate90 ,
+#             **common_args
+#         )
 
         if args.val_annotations_path:
             validation_generator = CSVGenerator(
