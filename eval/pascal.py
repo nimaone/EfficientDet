@@ -64,7 +64,7 @@ class Evaluate(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        if epoch % 3 == 2:
+        if epoch % 5 == 2:
         # run evaluation
             average_precisions = evaluate(
                 self.generator,
