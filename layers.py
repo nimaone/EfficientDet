@@ -246,7 +246,7 @@ class FilterDetections(keras.layers.Layer):
 
     def __init__(
             self,
-            nms=False,
+            nms=True,
             class_specific_filter=True,
             nms_threshold=0.5,
             score_threshold=0.01,
