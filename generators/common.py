@@ -555,7 +555,7 @@ class Generator(keras.utils.Sequence):
             
             # print(quadrangles)
             quadrangles = annotations['quadrangles']
-            alphas = np.zeros((quadrangles.shape[0], 4), dtype=np.float32)
+            alphas = np.zeros((quadrangles.shape[0], 2), dtype=np.float32)
             xmin = np.min(quadrangles, axis=1)[:, 0]
             ymin = np.min(quadrangles, axis=1)[:, 1]
             xmax = np.max(quadrangles, axis=1)[:, 0]
@@ -564,15 +564,15 @@ class Generator(keras.utils.Sequence):
             # alpha1, alpha2, alpha3, alpha4
             alphas[:, 0] = (quadrangles[:, 0, 0] - xmin) / (xmax - xmin)
             alphas[:, 1] = (quadrangles[:, 1, 1] - ymin) / (ymax - ymin)
-            alphas[:, 2] = (xmax - quadrangles[:, 2, 0]) / (xmax - xmin)
-            alphas[:, 3] = (ymax - quadrangles[:, 3, 1]) / (ymax - ymin)
+#             alphas[:, 2] = (xmax - quadrangles[:, 2, 0]) / (xmax - xmin)
+#             alphas[:, 3] = (ymax - quadrangles[:, 3, 1]) / (ymax - ymin)
             annotations['alphas'] = alphas
             # ratio
-            area1 = 0.5 * alphas[:, 0] * (1 - alphas[:, 3])
+            area1 = 0.5 * alphas[:, 0] * (1 - alphas[:, 1])
             area2 = 0.5 * alphas[:, 1] * (1 - alphas[:, 0])
-            area3 = 0.5 * alphas[:, 2] * (1 - alphas[:, 1])
-            area4 = 0.5 * alphas[:, 3] * (1 - alphas[:, 2])
-            annotations['ratios'] = 1 - area1 - area2 - area3 - area4
+#             area3 = 0.5 * alphas[:, 2] * (1 - alphas[:, 1])
+#             area4 = 0.5 * alphas[:, 3] * (1 - alphas[:, 2])
+            annotations['ratios'] = 1 - area1 - area2# - area3 - area4
         return annotations_group
     def compute_targets(self, image_group, annotations_group):
         """
