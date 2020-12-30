@@ -310,7 +310,7 @@ class BoxNet(models.Model):
         self.num_anchors = num_anchors
         self.separable_conv = separable_conv
         self.detect_quadrangle = detect_quadrangle
-        num_values = 9 if detect_quadrangle else 4
+        num_values = 7 if detect_quadrangle else 4
         options = {
             'kernel_size': 3,
             'strides': 1,
@@ -459,7 +459,7 @@ def efficientdet(phi, num_classes=20, num_anchors=9, weighted_bifpn=False, freez
             name='filtered_detections',
             score_threshold=score_threshold,
             detect_quadrangle=True
-        )([boxes, classification, regression[..., 4:8], regression[..., 8]])
+        )([boxes, classification, regression[..., 4:6], regression[..., 6]])
     else:
         detections = FilterDetections(
             name='filtered_detections',
