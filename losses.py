@@ -92,22 +92,54 @@ def quad_overlaps_ciou(decoded_boxes_quad,regression_target_quad):
                 quad_overlaps_ciou_, [regression_target_quad,decoded_boxes_quad], Tout=tf.float64,
                 )
 
-def zero_out_degree(rg_quad,rt_quad):
+def quad_to_off_bbox(ct):    
+    x1=ct[:,0]
+    x2=ct[:,2]
+    x3=ct[:,4]
+    x4=ct[:,6]
+    y1=ct[:,1]
+    y2=ct[:,3]
+    y3=ct[:,5]
+    y4=ct[:,7]
+    # angle = tf.cast(tf.atan2(y4 - y1, x4 - x1)*180./np.pi,tf.float64)
+    angle = tf.atan2(y4 - y1, x4 - x1)*180./np.pi
 
-    rt_quad=tf.reshape([rotate_tf(q,-change_angle_tf(q)) for q in tf.reshape(rt_quad,(-1,4,2))],(-1,8))
-    rg_quad=tf.reshape([rotate_tf(q,-change_angle_tf(q)) for q in tf.reshape(rg_quad,(-1,4,2))],(-1,8))
-    
-    rt_box=tf.stack((tf.reduce_min(rt_quad[...,0::2],axis=1),
-                    tf.reduce_min(rt_quad[...,1::2],axis=1),
-                    tf.reduce_max(rt_quad[...,0::2],axis=1),
-                    tf.reduce_max(rt_quad[...,1::2],axis=1)),axis=1)
-    
-    rg_box=tf.stack((tf.reduce_min(rg_quad[...,0::2],axis=1),
-                    tf.reduce_min(rg_quad[...,1::2],axis=1),
-                    tf.reduce_max(rg_quad[...,0::2],axis=1),
-                    tf.reduce_max(rg_quad[...,1::2],axis=1)),axis=1)
-    
-    return rg_box,rt_box
+    ctx=tf.reduce_mean((x1,x2,x3,x4),axis=0)
+    cty=tf.reduce_mean((y1,y2,y3,y4),axis=0)
+
+
+    angle=tf.where(tf.less(angle,-90),angle+90,angle)
+    angle=tf.where(tf.greater(angle,+90),angle-180,angle)
+    angles=tf.where(tf.less(angle,-45),-(90 + angle),-angle)
+    angles=-angles
+    rotation_amount_rad = angles * np.pi / 180.0
+    # a=(tf.cast(tf.cos(rotation_amount_rad),tf.float32))
+    # b=(tf.cast(tf.sin(rotation_amount_rad),tf.float32))
+
+    a=tf.cos(rotation_amount_rad)
+    b=tf.sin(rotation_amount_rad)
+
+    offset = tf.stack(((1-a)*ctx   -  b*cty,
+              b*ctx      + (1-a)*cty   ),axis=1)
+    M=tf.stack((
+              tf.stack((a , b),axis=1),
+              tf.stack((-b , a,),axis=1),
+              
+              ),axis=1)
+
+
+    xs=tf.stack((x1,x2,x3,x4),axis=1)
+    ys=tf.stack((y1,y2,y3,y4),axis=1)
+    poins = tf.stack((xs,ys),axis=1)
+    rots = tf.matmul(M,poins)
+
+    result=tf.transpose(rots,[0,2,1])+ tf.expand_dims( offset,axis=1)
+    xmin= tf.reduce_min(result[...,0],axis=1)
+    ymin= tf.reduce_min(result[...,1],axis=1)
+    xmax= tf.reduce_max(result[...,0],axis=1)
+    ymax= tf.reduce_max(result[...,1],axis=1)
+    return tf.stack((xmin,ymin,xmax,ymax),axis=1)
+
 
 
 def bbox_overlaps_ciou(bboxes1, bboxes2):
@@ -381,7 +413,7 @@ def smooth_l1_quad(sigma=3.0):
         # print('box_regression_loss.shape',box_regression_loss.shape)
         regression_target_quad =  bbox_target_transform_inv(regression_target)
         # print('regression_target_quad.shape',regression_target_quad.shape)
-        rt_box,rg_box = zero_out_degree(regression_target_quad,regression_decode_quad)
+        rt_box,rg_box = quad_to_off_bbox(regression_target_quad),quad_to_off_bbox(regression_decode_quad)
         
         quad_regression_loss=1-bbox_overlaps_ciou(rg_box,rt_box)
         # print('quad_regression_loss.shape',quad_regression_loss.shape)
