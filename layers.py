@@ -1,6 +1,8 @@
 # import keras
 from tensorflow import keras
 import tensorflow as tf
+import glob
+import polyiou as polyiou
 
 
 class BatchNormalization(keras.layers.BatchNormalization):
@@ -111,7 +113,31 @@ class RegressBoxes(keras.layers.Layer):
     def get_config(self):
         config = super(RegressBoxes, self).get_config()
         return config
+    
+def poly_nms(dets,scores, iou_threshold):
+      # scores = dets[:, 8]
+      polys = []
+      areas = []
+      for i in range(len(dets)):
+          tm_polygon = polyiou.VectorDouble([dets[i][0], dets[i][1],
+                                              dets[i][2], dets[i][3],
+                                              dets[i][4], dets[i][5],
+                                              dets[i][6], dets[i][7]])
+          polys.append(tm_polygon)
+      order = scores.argsort()[::-1]
 
+      keep = []
+      while order.size > 0:
+          ovr = []
+          i = order[0]
+          keep.append(i)
+          for j in range(order.size - 1):
+              iou = polyiou.iou_poly(polys[i], polys[order[j + 1]])
+              ovr.append(iou)
+          ovr = np.array(ovr)
+          inds = np.where(ovr <= iou_threshold)[0]
+          order = order[inds + 1]
+      return keep
 
 def filter_detections(
         boxes,
@@ -174,9 +200,9 @@ def filter_detections(
             # perform NMS
             # filtered_boxes = tf.concat([filtered_boxes[..., 1:2], filtered_boxes[..., 0:1],
             #                             filtered_boxes[..., 3:4], filtered_boxes[..., 2:3]], axis=-1)
-            nms_indices = tf.image.non_max_suppression(filtered_boxes, filtered_scores, max_output_size=max_detections,
-                                                       iou_threshold=nms_threshold)
-
+#             nms_indices = tf.image.non_max_suppression(filtered_boxes, filtered_scores, max_output_size=max_detections,
+#                                                        iou_threshold=nms_threshold)
+            nms_indices = poly_nms(filtered_boxes,filtered_scores, iou_threshold=nms_threshold)
             # filter indices based on NMS
             # (num_score_nms_keeps, 1)
             indices_ = keras.backend.gather(indices_, nms_indices)
@@ -287,7 +313,24 @@ class FilterDetections(keras.layers.Layer):
         if self.detect_quadrangle:
             alphas = inputs[2]
             ratios = inputs[3]
+        
+        alphas = 1 / (1 + tf.exp(-alphas))
 
+        a0 = (alphas[ ..., 0])
+        a1 = (alphas[ ..., 1])
+
+
+        quadrangles0 = boxes[ ..., 0] + (boxes[ ..., 2] - boxes[ ..., 0]) * a0
+        quadrangles1 = boxes[ ..., 1]
+        quadrangles2 = boxes[ ..., 2]
+        quadrangles3 = boxes[ ..., 1] + (boxes[ ..., 3] - boxes[ ..., 1]) * a1
+        quadrangles4 = boxes[ ..., 2] - (boxes[ ..., 2] - boxes[ ..., 0]) * a0
+        quadrangles5 = boxes[ ..., 3]
+        quadrangles6 = boxes[ ..., 0]
+        quadrangles7 = boxes[ ..., 3] - (boxes[ ..., 3] - boxes[ ..., 1]) * a1
+        quadrangles = tf.stack([quadrangles0, quadrangles1, quadrangles2, quadrangles3,
+                     quadrangles4, quadrangles5, quadrangles6, quadrangles7], axis=-1)
+        
         # wrap nms with our parameters
         def _filter_detections(args):
             boxes_ = args[0]
@@ -310,9 +353,15 @@ class FilterDetections(keras.layers.Layer):
 
         # call filter_detections on each batch item
         if self.detect_quadrangle:
-            outputs = tf.map_fn(
+#             outputs = tf.map_fn(
+#                 _filter_detections,
+#                 elems=[boxes, classification, alphas, ratios],
+#                 dtype=['float32', 'float32', 'float32', 'float32', 'int32'],
+#                 parallel_iterations=self.parallel_iterations
+#             )
+             outputs = tf.map_fn(
                 _filter_detections,
-                elems=[boxes, classification, alphas, ratios],
+                elems=[quadrangles, classification, alphas, ratios],
                 dtype=['float32', 'float32', 'float32', 'float32', 'int32'],
                 parallel_iterations=self.parallel_iterations
             )
