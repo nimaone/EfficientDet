@@ -20,7 +20,7 @@ from tensorflow import keras
 import tensorflow as tf
 from utils.anchors import anchors_for_shape,AnchorParameters
 phi=4
-image_sizes=(512, 640, 768, 896, 896, 1280, 1408)
+image_sizes=(512, 640, 768, 896, 640, 1280, 1408)
 image_size = (image_sizes[phi],image_sizes[phi])
 
 import math as m
@@ -197,7 +197,7 @@ def bbox_overlaps_ciou(bboxes1, bboxes2):
     alpha = v / (S + v)
     alpha=tf.stop_gradient(alpha)
     cious = iou - (u + alpha * v)
-    # cious = tf.clip_by_value(cious,-1.0, 1.0)
+    cious = tf.clip_by_value(cious,-1.0, 1.0)
     if exchange:
         cious = cious.T
     # with tf.Session() as ss:
