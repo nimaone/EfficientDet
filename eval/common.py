@@ -57,7 +57,7 @@ def _compute_ap(recall, precision):
     return ap
 
 
-def _get_detections(generator, model, score_threshold=0.05, max_detections=100, visualize=False):
+def _get_detections(generator, model, score_threshold=0.05, max_detections=1000, visualize=False):
     """
     Get the detections from the model using the generator.
 
@@ -89,7 +89,7 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         # run network
         boxes, scores, alphas, ratios, labels = model.predict_on_batch([np.expand_dims(image, axis=0)])
         
-        boxes /= scale
+       
 #         boxes[:, :, 0] = np.clip(boxes[:, :, 0], 0, w - 1)
 #         boxes[:, :, 1] = np.clip(boxes[:, :, 1], 0, h - 1)
 #         boxes[:, :, 2] = np.clip(boxes[:, :, 2], 0, w - 1)
@@ -106,8 +106,13 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         quadrangles[:, :, 5] = boxes[:, :, 3]
         quadrangles[:, :, 6] = boxes[:, :, 0]
         quadrangles[:, :, 7] = boxes[:, :, 3] - (boxes[:, :, 3] - boxes[:, :, 1]) * alphas[:, :, 3]
+        boxes[0, :, [0, 2]] = boxes[0, :, [0, 2]] 
+        boxes[0, :, [1, 3]] = boxes[0, :, [1, 3]] 
+        boxes /= scale
+   
+        quadrangles[0, :, [0, 2, 4, 6]] = quadrangles[0, :, [0, 2, 4, 6]] 
+        quadrangles[0, :, [1, 3, 5, 7]] = quadrangles[0, :, [1, 3, 5, 7]] 
         quadrangles /= scale
-
         # select indices which have a score above the threshold
         indices = np.where(scores[0, :] > score_threshold)[0]
 
@@ -119,7 +124,7 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
 
         # select detections
         # (n, 4)
-        image_boxes = boxes[0, indices[scores_sort], :]
+#         image_boxes = boxes[0, indices[scores_sort], :]
         image_quadrangles = quadrangles[0, indices[scores_sort], :]
         # (n, )
         image_scores = scores[scores_sort]
@@ -182,7 +187,7 @@ def evaluate(
         model,
         iou_threshold=0.5,
         score_threshold=0.01,
-        max_detections=100,
+        max_detections=1000,
         visualize=False,
         epoch=0
 ):
