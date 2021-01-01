@@ -148,7 +148,7 @@ def filter_detections(
         nms=True,
         score_threshold=0.01,
         max_detections=1000,
-        nms_threshold=0.5,
+        nms_threshold=0.01,
         detect_quadrangle=False,
 ):
     """
@@ -202,7 +202,8 @@ def filter_detections(
             #                             filtered_boxes[..., 3:4], filtered_boxes[..., 2:3]], axis=-1)
 #             nms_indices = tf.image.non_max_suppression(filtered_boxes, filtered_scores, max_output_size=max_detections,
 #                                                        iou_threshold=nms_threshold)
-            nms_indices = poly_nms(filtered_boxes,filtered_scores, iou_threshold=nms_threshold)
+            
+            nms_indices = tf.numpy_function(poly_nms,[filtered_boxes,filtered_scores, iou_threshold=nms_threshold],Tout=tf.float32)
             # filter indices based on NMS
             # (num_score_nms_keeps, 1)
             indices_ = keras.backend.gather(indices_, nms_indices)
