@@ -200,10 +200,10 @@ def filter_detections(
             # perform NMS
             # filtered_boxes = tf.concat([filtered_boxes[..., 1:2], filtered_boxes[..., 0:1],
             #                             filtered_boxes[..., 3:4], filtered_boxes[..., 2:3]], axis=-1)
-#             nms_indices = tf.image.non_max_suppression(filtered_boxes, filtered_scores, max_output_size=max_detections,
-#                                                        iou_threshold=nms_threshold)
+            nms_indices = tf.image.non_max_suppression(filtered_boxes, filtered_scores, max_output_size=max_detections,
+                                                       iou_threshold=nms_threshold)
             
-            nms_indices = tf.numpy_function(poly_nms,[filtered_boxes,filtered_scores, iou_threshold=nms_threshold],Tout=tf.float32)
+#             nms_indices = tf.numpy_function(poly_nms,[filtered_boxes,filtered_scores, iou_threshold=nms_threshold],Tout=tf.float32)
             # filter indices based on NMS
             # (num_score_nms_keeps, 1)
             indices_ = keras.backend.gather(indices_, nms_indices)
@@ -275,7 +275,7 @@ class FilterDetections(keras.layers.Layer):
             self,
             nms=True,
             class_specific_filter=True,
-            nms_threshold=0.1,
+            nms_threshold=0.5,
             score_threshold=0.01,
             max_detections=1000,
             parallel_iterations=32,
@@ -315,22 +315,22 @@ class FilterDetections(keras.layers.Layer):
             alphas = inputs[2]
             ratios = inputs[3]
         
-        alphas = 1 / (1 + tf.exp(-alphas))
+    #         alphas = 1 / (1 + tf.exp(-alphas))
 
-        a0 = (alphas[ ..., 0])
-        a1 = (alphas[ ..., 1])
+    #         a0 = (alphas[ ..., 0])
+    #         a1 = (alphas[ ..., 1])
 
 
-        quadrangles0 = boxes[ ..., 0] + (boxes[ ..., 2] - boxes[ ..., 0]) * a0
-        quadrangles1 = boxes[ ..., 1]
-        quadrangles2 = boxes[ ..., 2]
-        quadrangles3 = boxes[ ..., 1] + (boxes[ ..., 3] - boxes[ ..., 1]) * a1
-        quadrangles4 = boxes[ ..., 2] - (boxes[ ..., 2] - boxes[ ..., 0]) * a0
-        quadrangles5 = boxes[ ..., 3]
-        quadrangles6 = boxes[ ..., 0]
-        quadrangles7 = boxes[ ..., 3] - (boxes[ ..., 3] - boxes[ ..., 1]) * a1
-        quadrangles = tf.stack([quadrangles0, quadrangles1, quadrangles2, quadrangles3,
-                     quadrangles4, quadrangles5, quadrangles6, quadrangles7], axis=-1)
+    #         quadrangles0 = boxes[ ..., 0] + (boxes[ ..., 2] - boxes[ ..., 0]) * a0
+    #         quadrangles1 = boxes[ ..., 1]
+    #         quadrangles2 = boxes[ ..., 2]
+    #         quadrangles3 = boxes[ ..., 1] + (boxes[ ..., 3] - boxes[ ..., 1]) * a1
+    #         quadrangles4 = boxes[ ..., 2] - (boxes[ ..., 2] - boxes[ ..., 0]) * a0
+    #         quadrangles5 = boxes[ ..., 3]
+    #         quadrangles6 = boxes[ ..., 0]
+    #         quadrangles7 = boxes[ ..., 3] - (boxes[ ..., 3] - boxes[ ..., 1]) * a1
+    #         quadrangles = tf.stack([quadrangles0, quadrangles1, quadrangles2, quadrangles3,
+    #                      quadrangles4, quadrangles5, quadrangles6, quadrangles7], axis=-1)
         
         # wrap nms with our parameters
         def _filter_detections(args):
@@ -354,18 +354,18 @@ class FilterDetections(keras.layers.Layer):
 
         # call filter_detections on each batch item
         if self.detect_quadrangle:
-#             outputs = tf.map_fn(
-#                 _filter_detections,
-#                 elems=[boxes, classification, alphas, ratios],
-#                 dtype=['float32', 'float32', 'float32', 'float32', 'int32'],
-#                 parallel_iterations=self.parallel_iterations
-#             )
-             outputs = tf.map_fn(
+            outputs = tf.map_fn(
                 _filter_detections,
-                elems=[quadrangles, classification, alphas, ratios],
+                elems=[boxes, classification, alphas, ratios],
                 dtype=['float32', 'float32', 'float32', 'float32', 'int32'],
                 parallel_iterations=self.parallel_iterations
             )
+#              outputs = tf.map_fn(
+#                 _filter_detections,
+#                 elems=[quadrangles, classification, alphas, ratios],
+#                 dtype=['float32', 'float32', 'float32', 'float32', 'int32'],
+#                 parallel_iterations=self.parallel_iterations
+#             )
         else:
             outputs = tf.map_fn(
                 _filter_detections,
